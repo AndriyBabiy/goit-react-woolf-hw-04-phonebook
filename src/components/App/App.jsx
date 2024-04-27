@@ -1,9 +1,13 @@
 import Form from 'components/Form/Form';
 import { Container } from './App.styled';
-import { Component } from 'react';
+import { useEffect, useState } from 'react';
 import { ComponentHeading } from 'components/ComponentHeading/ComponentHeading';
 import { Contacts } from 'components/Contacts/Contacts';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  ContactsSearch,
+  InputLabel,
+} from 'components/Contacts/Contacts.styled';
 
 const INITIAL_STATE = {
   contacts: [
@@ -15,69 +19,66 @@ const INITIAL_STATE = {
   filter: '',
 };
 
-class App extends Component {
-  state = {
-    ...INITIAL_STATE,
+const App = () => {
+  const [contacts, setContacts] = useState(
+    () => JSON.parse(localStorage.getItem('contacts')) || INITIAL_STATE.contacts
+  );
+  const [filter, setFilter] = useState(INITIAL_STATE.filter);
+
+  useEffect(() => {
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
+
+  const handleChange = e => {
+    const { name, value } = e.target;
+
+    if (name === 'filter') setFilter(value);
   };
 
-  componentDidMount() {
-    const localData = localStorage.getItem('contacts');
-
-    if (localData) {
-      this.setState({ contacts: JSON.parse(localData) });
-    }
-  }
-
-  componentDidUpdate(_, prevState) {
-    if (prevState.contacts.length !== this.state.contacts.length) {
-      localStorage.setItem('contacts', JSON.stringify(this.state.contacts));
-    }
-  }
-
-  handleChange = ({ target: { name, value } }) => {
-    this.setState({ [name]: value });
-  };
-
-  createNewContact = newContact => {
-    if (this.state.contacts.find(({ name }) => name === newContact.name)) {
+  const createNewContact = newContact => {
+    if (contacts.find(({ name }) => name === newContact.name)) {
       alert(`${newContact.name} is already in contacts`);
     } else {
-      this.setState(({ contacts }) => ({
-        contacts: [{ id: uuidv4(), ...newContact }, ...contacts],
-      }));
+      setContacts(prevContacts => [
+        { id: uuidv4(), ...newContact },
+        ...prevContacts,
+      ]);
     }
   };
 
-  handleDelete = id => {
-    this.setState(prev => ({
-      contacts: prev.contacts.filter(elem => elem.id !== id),
-    }));
+  const handleDelete = id => {
+    setContacts(prev => prev.filter(elem => elem.id !== id));
   };
 
-  handleFilter = () => {
-    const contacts = [...this.state.contacts];
+  const handleFilter = () => {
+    const contact_list = [...contacts];
 
-    return contacts.filter(({ name }) =>
-      name.toLowerCase().includes(this.state.filter.toLowerCase())
+    return contact_list.filter(({ name }) =>
+      name.toLowerCase().includes(filter.toLowerCase())
     );
   };
 
-  render() {
-    return (
-      <Container>
-        <ComponentHeading size="xlarge" text={'Phonebook'} />
-        <Form submit={this.createNewContact} />
-        <ComponentHeading size="xlarge" text={'Contacts'} />
-        <Contacts
-          contacts={this.state.contacts}
-          filter={this.state.filter}
-          inputChange={this.handleChange}
-          filterContacts={this.handleFilter()}
-          deleteContact={this.handleDelete}
+  return (
+    <Container>
+      <ComponentHeading size="xlarge" text={'Phonebook'} />
+      <Form submit={createNewContact} />
+      <ContactsSearch>
+        <InputLabel htmlFor="filter">Find contacts by name:</InputLabel>
+        <input
+          value={filter}
+          onChange={handleChange}
+          id="filter"
+          type="text"
+          name="filter"
+          pattern="^[a-zA-Zа-яА-Я]+(([' -][a-zA-Zа-яА-Я ])?[a-zA-Zа-яА-Я]*)*$"
+          title="Name may contain only letters, apostrophe, dash and spaces. For example Adrian, Jacob Mercer, Charles de Batz de Castelmore d'Artagnan"
+          required
         />
-      </Container>
-    );
-  }
-}
+      </ContactsSearch>
+      <ComponentHeading size="xlarge" text={'Contacts'} />
+      <Contacts filterContacts={handleFilter()} deleteContact={handleDelete} />
+    </Container>
+  );
+};
 
 export default App;
